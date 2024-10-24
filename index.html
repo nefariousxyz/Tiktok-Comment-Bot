@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-4xl">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">TikTok Automation</h1>
+        
+        <!-- Grid Layout for Two Columns -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div>
+                <!-- TikTok Post URLs (multiple links) -->
+                <div class="mb-4">
+                    <label for="target-urls" class="block text-sm font-medium text-gray-700 mb-2">TikTok Post URLs (one per line):</label>
+                    <textarea id="target-urls" rows="8" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter TikTok Post URLs, one per line"></textarea>
+                </div>
+
+                <!-- Account Selection -->
+                <div class="mb-4">
+                    <label for="account-index" class="block text-sm font-medium text-gray-700 mb-2">Account Index:</label>
+                    <input type="number" id="account-index" value="1" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <!-- Comments -->
+                <div class="mb-4">
+                    <label for="comments" class="block text-sm font-medium text-gray-700 mb-2">Comments (one per line):</label>
+                    <textarea id="comments" rows="8" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter comments here..."></textarea>
+                </div>
+
+                <!-- TikTok App Version -->
+                <div class="mb-4">
+                    <label for="app-version" class="block text-sm font-medium text-gray-700 mb-2">Select TikTok Version:</label>
+                    <select id="app-version" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Global">Global: com.zhiliaoapp.musically</option>
+                        <option value="Asia">Asia: com.ss.android.ugc.trill</option>
+                    </select>
+                </div>
+
+                <!-- CAPTCHA Toggle -->
+                <div class="mb-4">
+                    <label for="captcha-toggle" class="inline-flex items-center">
+                        <input type="checkbox" id="captcha-toggle" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <span class="ml-2 text-sm text-gray-700">Enable CAPTCHA Handling</span>
+                    </label>
+                </div>
+
+                <!-- Proxy File Upload -->
+                <div class="mb-4">
+                    <label for="proxy-file" class="block text-sm font-medium text-gray-700 mb-2">Upload Proxy List (TXT):</label>
+                    <input type="file" id="proxy-file" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Automation Button (Full Width) -->
+        <div class="mt-6">
+            <button id="start-automation" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                Start Automation
+            </button>
+        </div>
+    </div>
+
+    <script>
+let isRunning = false; // Flag to check if automation is running
+
+const startButton = document.getElementById('start-automation');
+const inputsToFreeze = [
+    document.getElementById('target-urls'),
+    document.getElementById('comments'),
+    document.getElementById('account-index'),
+    document.getElementById('app-version'),
+    document.getElementById('captcha-toggle'),
+    document.getElementById('proxy-file')
+];
+
+const toggleAutomationState = (isRunning) => {
+    if (isRunning) {
+        startButton.textContent = "Stop Automation";
+        startButton.classList.remove("bg-blue-600", "hover:bg-blue-700");
+        startButton.classList.add("bg-red-600", "hover:bg-red-700");
+
+        inputsToFreeze.forEach(input => {
+            input.disabled = true;
+        });
+    } else {
+        startButton.textContent = "Start Automation";
+        startButton.classList.remove("bg-red-600", "hover:bg-red-700");
+        startButton.classList.add("bg-blue-600", "hover:bg-blue-700");
+
+        inputsToFreeze.forEach(input => {
+            input.disabled = false;
+        });
+    }
+};
+
+startButton.addEventListener('click', () => {
+    if (isRunning) {
+        // Stop automation logic
+        alert("Stopping automation...");
+        window.api.stopAutomation(); // Send stop signal to backend
+
+        isRunning = false;
+        toggleAutomationState(isRunning);
+    } else {
+        // Start automation logic
+        const targetUrls = document.getElementById('target-urls').value.split('\n').map(url => url.trim()).filter(Boolean);
+        const comments = document.getElementById('comments').value.split('\n').map(comment => comment.trim()).filter(Boolean);
+        const accountIndex = document.getElementById('account-index').value;
+        const captchaEnabled = document.getElementById('captcha-toggle').checked;
+        const appVersion = document.getElementById('app-version').value;
+
+        const proxyFile = document.getElementById('proxy-file').files[0];
+        if (!proxyFile) {
+            alert("Please upload a proxy file.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const proxies = event.target.result.split('\n').map(proxy => proxy.trim()).filter(Boolean);
+            if (proxies.length === 0) {
+                alert("No proxies found in the file.");
+                return;
+            }
+
+            window.api.startAutomation(targetUrls, comments, accountIndex, captchaEnabled, appVersion, proxies);
+            isRunning = true;
+            toggleAutomationState(isRunning);
+        };
+
+        reader.onerror = function(event) {
+            console.error("Error reading proxy file:", event.target.error);
+        };
+
+        reader.readAsText(proxyFile);
+    }
+});
+
+
+    </script>
+
+</body>
+</html>
